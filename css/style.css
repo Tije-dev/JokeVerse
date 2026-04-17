@@ -1,0 +1,51 @@
+body {
+    transition: 0.3s;
+}
+
+.light-mode {
+    background: #f8f9fa;
+    color: #000;
+}
+
+.dark-mode {
+    background: #121212;
+    color: #fff;
+}
+
+.card {
+    border-radius: 15px;
+}
+
+button {
+    transition: 0.2s;
+}
+
+button:hover {
+    transform: scale(1.05);
+}
+
+/* Heading styling */
+h1 {
+    letter-spacing: 1px;
+}
+
+/* Tooltip styling */
+#copyTooltip {      
+    position: absolute;
+    top: 5%;
+    left: 90%;
+    transform: translateX(-50%);
+    background: #2c2c2c;
+    color: #fff;
+    padding: 3px 8px;
+    border-radius: 5px;
+    font-size: 0.8rem;
+    opacity: 0.9;
+}
+
+/* close to copy button */
+.copyTooltipParent {
+    position: relative;
+}
+
+
