@@ -4,6 +4,12 @@
 // 4. Node sends response to JS
 // 5. JS displays result
 
+// export default function test() {
+//     alert('test hi');
+//     console.log('test hi');
+    
+// }
+
 
 
 
@@ -93,4 +99,75 @@ function speakJoke() {
     let speech = new SpeechSynthesisUtterance(currentJoke);
     speech.lang = "en-US";
     speechSynthesis.speak(speech);
+}
+
+function showSaveFeedbackModal(options) {
+    const modalEl = document.getElementById("saveFeedbackModal");
+    const titleEl = document.getElementById("saveFeedbackModalTitle");
+    const bodyEl = document.getElementById("saveFeedbackModalBody");
+    const savedBtn = document.getElementById("saveFeedbackModalSavedBtn");
+    if (!modalEl || !titleEl || !bodyEl || !savedBtn) {
+        return;
+    }
+
+    titleEl.textContent = options.title || "";
+    bodyEl.textContent = options.bodyText || "";
+
+    if (options.showSavedLink) {
+        savedBtn.classList.remove("d-none");
+    } else {
+        savedBtn.classList.add("d-none");
+    }
+
+    if (typeof bootstrap === "undefined" || !bootstrap.Modal) {
+        window.alert(options.bodyText || options.title || "");
+        return;
+    }
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+}
+
+function saveJoke() {
+    const setup = document.getElementById("setup").innerText.trim();
+    const punchline = document.getElementById("punchline").innerText.trim();
+    const category = document.getElementById("category").value;
+
+    if (!setup || setup.startsWith("No jokes found")) {
+        showSaveFeedbackModal({
+            title: "Nothing to save",
+            bodyText: "Get a joke first, then tap Save.",
+            showSavedLink: false,
+        });
+        return;
+    }
+
+    fetch("/api/save-joke", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category, setup, punchline }),
+    })
+        .then((response) => response.json().then((data) => ({ ok: response.ok, data })))
+        .then(({ ok, data }) => {
+            if (!ok || !data.success) {
+                showSaveFeedbackModal({
+                    title: "Save failed",
+                    bodyText: data.message || "We could not save your joke. Try again.",
+                    showSavedLink: false,
+                });
+                return;
+            }
+            showSaveFeedbackModal({
+                title: "Joke saved",
+                bodyText:
+                    "Your joke was saved. Open the Saved page to view it, filter, or delete it anytime. You can use the Saved link above or the button below.",
+                showSavedLink: true,
+            });
+        })
+        .catch(() => {
+            showSaveFeedbackModal({
+                title: "Save failed",
+                bodyText: "Network error. Check your connection and try again.",
+                showSavedLink: false,
+            });
+        });
 }

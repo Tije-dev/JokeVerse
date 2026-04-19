@@ -7,6 +7,7 @@ const rateLimit = require('express-rate-limit');
 
 const jokesRouter = require('./routes/jokes');
 const authRouter = require('./routes/auth');
+const saveJokeRouter = require('./routes/saveJoke');
 
 const app = express();
 
@@ -31,7 +32,7 @@ const corsOptions = {
     callback(null, false);
   },
   credentials: true,
-  methods: ['GET', 'POST', 'OPTIONS'],
+  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type'],
 };
 
@@ -65,11 +66,20 @@ const authLimiter = rateLimit({
   message: { success: false, message: 'Too many requests. Try again later.' },
 });
 
+const saveJokeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many requests. Try again later.' },
+});
+
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
 app.use('/api/jokes', jokesRouter);
 app.use('/api/auth', authLimiter, authRouter);
+app.use('/api/save-joke', saveJokeLimiter, saveJokeRouter);
 
 const publicRoot = path.join(__dirname, '..');
 // Browsers request /favicon.ico by default; serve SVG at that path to avoid 404 noise

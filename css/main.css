@@ -64,3 +64,25 @@ body {
     margin-top: 4rem;
     font-size: 1rem;
 }
+
+.modal-jokeverse .modal-content {
+    background: var(--card-bg);
+    color: var(--text-main);
+    border: 1px solid var(--secondary-bg);
+    border-radius: var(--border-radius);
+}
+.modal-jokeverse .modal-header .modal-title {
+    color: var(--accent);
+}
+.modal-jokeverse .modal-body {
+    color: var(--text-muted);
+}
+.modal-jokeverse .btn-outline-light {
+    border-color: var(--text-muted);
+    color: var(--text-main);
+}
+.modal-jokeverse .btn-outline-light:hover {
+    background: var(--secondary-bg);
+    border-color: var(--accent);
+    color: var(--text-main);
+}
