@@ -8,6 +8,7 @@ const rateLimit = require('express-rate-limit');
 const jokesRouter = require('./routes/jokes');
 const authRouter = require('./routes/auth');
 const saveJokeRouter = require('./routes/saveJoke');
+const { requirePageAuth } = require('./middleware/auth');
 
 const app = express();
 
@@ -43,17 +44,24 @@ if (!sessionSecret && process.env.NODE_ENV === 'production') {
   throw new Error('SESSION_SECRET must be set in production.');
 }
 
+const isProduction = process.env.NODE_ENV === 'production';
+const sessionMaxAgeMs = Number.parseInt(process.env.SESSION_MAX_AGE_MS || '', 10);
+const cookieMaxAge = Number.isFinite(sessionMaxAgeMs) ? sessionMaxAgeMs : 7 * 24 * 60 * 60 * 1000;
+
 app.use(
   session({
     name: 'jokeverse.sid',
     secret: sessionSecret || 'dev-only-insecure-set-SESSION_SECRET',
     resave: false,
     saveUninitialized: false,
+    rolling: true,
+    proxy: true,
+    unset: 'destroy',
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProduction,
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: cookieMaxAge,
     },
   })
 );
@@ -82,6 +90,14 @@ app.use('/api/auth', authLimiter, authRouter);
 app.use('/api/save-joke', saveJokeLimiter, saveJokeRouter);
 
 const publicRoot = path.join(__dirname, '..');
+
+const protectedHtmlFiles = ['pages/main.html', 'pages/save.html'];
+protectedHtmlFiles.forEach((relativePath) => {
+  const urlPath = `/${relativePath.replace(/\\/g, '/')}`;
+  app.get(urlPath, requirePageAuth, (req, res) => {
+    res.sendFile(path.join(publicRoot, relativePath));
+  });
+});
 // Browsers request /favicon.ico by default; serve SVG at that path to avoid 404 noise
 app.get('/favicon.ico', (req, res) => {
   res.redirect(301, '/favicon.svg');

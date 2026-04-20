@@ -1,5 +1,6 @@
 const express = require('express');
 const { getPool } = require('../config/database');
+const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -20,14 +21,6 @@ const ALLOWED_CATEGORIES = new Set([
 
 const MAX_SETUP = 500;
 const MAX_PUNCHLINE = 500;
-
-function requireAuth(req, res, next) {
-  if (!req.session.userId) {
-    res.status(401).json({ success: false, message: 'You must be logged in.' });
-    return;
-  }
-  next();
-}
 
 router.use(requireAuth);
 
@@ -50,7 +43,7 @@ router.get('/', async (req, res) => {
        FROM saved_jokes
        WHERE user_id = ?
        ORDER BY date DESC`,
-      [req.session.userId]
+      [req.authUser.id]
     );
     res.json({ success: true, jokes: rows });
   } catch (err) {
@@ -82,7 +75,7 @@ router.post('/', async (req, res) => {
     const pool = getPool();
     const [result] = await pool.execute(
       'INSERT INTO saved_jokes (user_id, category, setup, punchline) VALUES (?, ?, ?, ?)',
-      [req.session.userId, category, setup, punchline]
+      [req.authUser.id, category, setup, punchline]
     );
     res.json({ success: true, saveId: result.insertId });
   } catch (err) {
@@ -102,7 +95,7 @@ router.delete('/:id', async (req, res) => {
     const pool = getPool();
     const [result] = await pool.execute(
       'DELETE FROM saved_jokes WHERE save_id = ? AND user_id = ? LIMIT 1',
-      [id, req.session.userId]
+      [id, req.authUser.id]
     );
     if (result.affectedRows === 0) {
       res.status(404).json({ success: false, message: 'Joke not found.' });

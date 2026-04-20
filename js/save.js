@@ -17,7 +17,7 @@ async function loadJokes() {
     if (!response.ok || !data.success) {
       jokes = [];
       if (response.status === 401) {
-        window.location.href = "/pages/login.html";
+        window.location.href = "/pages/login.html?next=save.html";
         return;
       }
     } else {
@@ -124,6 +124,10 @@ async function deleteJoke(id) {
       credentials: "include",
     });
     const data = await response.json();
+    if (response.status === 401) {
+      window.location.href = "/pages/login.html?next=save.html";
+      return;
+    }
     if (!response.ok || !data.success) {
       alert(data.message || "Delete failed.");
       return;

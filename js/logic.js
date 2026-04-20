@@ -146,8 +146,14 @@ function saveJoke() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ category, setup, punchline }),
     })
-        .then((response) => response.json().then((data) => ({ ok: response.ok, data })))
-        .then(({ ok, data }) => {
+        .then((response) =>
+            response.json().then((data) => ({ ok: response.ok, data, status: response.status }))
+        )
+        .then(({ ok, data, status }) => {
+            if (status === 401) {
+                window.location.href = '/pages/login.html?next=main.html';
+                return;
+            }
             if (!ok || !data.success) {
                 showSaveFeedbackModal({
                     title: "Save failed",

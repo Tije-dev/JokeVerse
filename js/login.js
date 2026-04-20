@@ -36,13 +36,16 @@
 
   /** Where to go after login or signup. Optional: login.html?next=save.html */
   function getPostAuthRedirect() {
-    var allowed = { 'main.html': true, 'save.html': true };
+    var allowed = {
+      'main.html': '/pages/main.html',
+      'save.html': '/pages/save.html',
+    };
     var params = new URLSearchParams(window.location.search);
     var next = params.get('next');
     if (next && allowed[next]) {
-      return next;
+      return allowed[next];
     }
-    return 'main.html';
+    return '/pages/main.html';
   }
 
   document.getElementById('loginForm').addEventListener('submit', async function (e) {
@@ -131,6 +134,18 @@
       this.classList.add('fa-eye');
     }
   });
+
+  (async function redirectIfAuthenticated() {
+    try {
+      const res = await authFetch('/api/auth/me');
+      const data = await readJson(res);
+      if (data.success && data.authenticated) {
+        window.location.replace(getPostAuthRedirect());
+      }
+    } catch (_) {
+      /* stay on login */
+    }
+  })();
 
   document.getElementById('signupForm').addEventListener('submit', async function (e) {
     e.preventDefault();

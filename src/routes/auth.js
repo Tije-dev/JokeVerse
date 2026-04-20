@@ -1,6 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const { getPool } = require('../config/database');
+const { getSessionUser, setSessionUser, clearSessionUser } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -43,17 +44,21 @@ router.post('/login', async (req, res) => {
         res.json({ success: false, message: 'Login failed. Try again later.' });
         return;
       }
-      req.session.userId = user.id;
-      req.session.username = user.username;
-      req.session.email = user.email;
-      res.json({
-        success: true,
-        message: 'Login successful.',
-        user: {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-        },
+      setSessionUser(req, user);
+      req.session.save((saveErr) => {
+        if (saveErr) {
+          res.json({ success: false, message: 'Login failed. Try again later.' });
+          return;
+        }
+        res.json({
+          success: true,
+          message: 'Login successful.',
+          user: {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+          },
+        });
       });
     });
   } catch (err) {
@@ -101,13 +106,17 @@ router.post('/register', async (req, res) => {
         res.json({ success: true, message: 'Registration successful. Please log in.' });
         return;
       }
-      req.session.userId = userId;
-      req.session.username = username;
-      req.session.email = email;
-      res.json({
-        success: true,
-        message: 'Registration successful.',
-        user,
+      setSessionUser(req, user);
+      req.session.save((saveErr) => {
+        if (saveErr) {
+          res.json({ success: true, message: 'Registration successful. Please log in.' });
+          return;
+        }
+        res.json({
+          success: true,
+          message: 'Registration successful.',
+          user,
+        });
       });
     });
   } catch (err) {
@@ -115,30 +124,35 @@ router.post('/register', async (req, res) => {
   }
 });
 
+const sessionCookieOptions = {
+  path: '/',
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax',
+};
+
 router.post('/logout', (req, res) => {
+  clearSessionUser(req);
   req.session.destroy((err) => {
     if (err) {
       res.json({ success: false, message: 'Logout failed.' });
       return;
     }
-    res.clearCookie('jokeverse.sid', { path: '/' });
+    res.clearCookie('jokeverse.sid', sessionCookieOptions);
     res.json({ success: true, message: 'Logged out.' });
   });
 });
 
 router.get('/me', (req, res) => {
-  if (!req.session.userId) {
+  const user = getSessionUser(req);
+  if (!user) {
     res.json({ success: true, authenticated: false });
     return;
   }
   res.json({
     success: true,
     authenticated: true,
-    user: {
-      id: req.session.userId,
-      username: req.session.username,
-      email: req.session.email,
-    },
+    user,
   });
 });
 
