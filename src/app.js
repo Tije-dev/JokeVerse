@@ -20,22 +20,31 @@ app.use(
   })
 );
 
-const corsOptions = {
-  origin(origin, callback) {
-    if (!origin) {
-      callback(null, true);
-      return;
-    }
-    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
-      callback(null, origin);
-      return;
-    }
-    callback(null, false);
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type'],
-};
+const corsOptions = (() => {
+  const allowedEnv = process.env.CORS_ORIGINS || '';
+  const allowedOrigins = allowedEnv.split(',').map((s) => s.trim()).filter(Boolean);
+  const isDevAllowLocalhost = process.env.NODE_ENV !== 'production';
+  return {
+    origin(origin, callback) {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+      if (allowedOrigins.length > 0 && allowedOrigins.includes(origin)) {
+        callback(null, origin);
+        return;
+      }
+      if (isDevAllowLocalhost && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+        callback(null, origin);
+        return;
+      }
+      callback(null, false);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type'],
+  };
+})();
 
 app.use(cors(corsOptions));
 
@@ -89,27 +98,45 @@ app.use('/api/jokes', jokesRouter);
 app.use('/api/auth', authLimiter, authRouter);
 app.use('/api/save-joke', saveJokeLimiter, saveJokeRouter);
 
+// Serve static files from `public` if exists, otherwise fall back to project root
 const publicRoot = path.join(__dirname, '..');
+// Also serve an explicit `public` folder if present (conventional)
+app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use(express.static(publicRoot));
 
+// Protected HTML routes (served from project root `pages/`)
 const protectedHtmlFiles = ['pages/main.html', 'pages/save.html'];
 protectedHtmlFiles.forEach((relativePath) => {
   const urlPath = `/${relativePath.replace(/\\/g, '/')}`;
-  app.get(urlPath, requirePageAuth, (req, res) => {
-    res.sendFile(path.join(publicRoot, relativePath));
+  app.get(urlPath, requirePageAuth, (req, res, next) => {
+    res.sendFile(path.join(publicRoot, relativePath), (err) => {
+      if (err) next(err);
+    });
   });
 });
+
 // Browsers request /favicon.ico by default; serve SVG at that path to avoid 404 noise
 app.get('/favicon.ico', (req, res) => {
   res.redirect(301, '/favicon.svg');
 });
-app.use(express.static(publicRoot));
 
+// Not Found handler
 app.use((req, res) => {
   if (req.originalUrl.startsWith('/api')) {
     res.status(404).json({ success: false, message: 'Not found.' });
     return;
   }
   res.status(404).send('Not found');
+});
+
+// Basic error handler to avoid crashing on small errors
+app.use((err, req, res, next) => {
+  console.error('Server error:', err && err.stack ? err.stack : err);
+  if (req.originalUrl.startsWith('/api')) {
+    res.status(500).json({ success: false, message: 'Internal server error.' });
+    return;
+  }
+  res.status(500).send('Internal server error');
 });
 
 module.exports = app;
